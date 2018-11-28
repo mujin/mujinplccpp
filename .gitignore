@@ -1,0 +1,7 @@
+# emacs
+.~
+
+# vim
+*.swp
+*.swo
+*.swn

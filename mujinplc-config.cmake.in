@@ -1,0 +1,29 @@
+# - Find MUJIN PLC Library
+#
+# MUJINPLC_ROOT_DIR - the root directory where the installation can be found
+# MUJINPLC_CXX_FLAGS - extra flags for compilation
+# MUJINPLC_LINK_FLAGS - extra flags for linking
+# MUJINPLC_INCLUDE_DIRS - include directories
+# MUJINPLC_LIBRARY_DIRS - link directories
+# MUJINPLC_LIBRARIES - libraries to link plugins with
+
+get_filename_component(_PREFIX "${CMAKE_CURRENT_LIST_FILE}" PATH)
+get_filename_component(_PREFIX "${_PREFIX}" PATH)
+get_filename_component(_PREFIX "${_PREFIX}" PATH)
+get_filename_component(MUJINPLC_ROOT_DIR "${_PREFIX}" PATH)
+
+set(MUJINPLC_LIBRARY_SUFFIX "@MUJINPLC_LIBRARY_SUFFIX@" CACHE STRING "the suffix for the mujin plc libraries" FORCE)
+set(MUJINPLC_CXX_FLAGS "@MUJINPLC_EXPORT_CXXFLAGS@")
+set(MUJINPLC_LINK_FLAGS "")
+set(MUJINPLC_INCLUDE_DIRS "${MUJINPLC_ROOT_DIR}/include")
+set(MUJINPLC_LIBRARY_DIRS "${MUJINPLC_ROOT_DIR}/lib@LIB_SUFFIX@")
+set(MUJINPLC_LIBRARIES mujinplc)
+
+mark_as_advanced(
+  MUJINPLC_ROOT_DIR
+  MUJINPLC_CXX_FLAGS
+  MUJINPLC_LINK_FLAGS
+  MUJINPLC_INCLUDE_DIRS
+  MUJINPLC_LIBRARY_DIRS
+  MUJINPLC_LIBRARIES
+)
