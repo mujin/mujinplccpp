@@ -1,5 +1,5 @@
-#ifndef MUJIN_PLC_H
-#define MUJIN_PLC_H
+#ifndef MUJINPLC_MUJINPLC_H
+#define MUJINPLC_MUJINPLC_H
 
 
 
