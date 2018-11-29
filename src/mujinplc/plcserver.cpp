@@ -1,5 +1,6 @@
 #include "mujinplc/plcserver.h"
 
+#include <iostream> // TODO: temporary
 #include <zmq.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
@@ -56,6 +57,19 @@ public:
         if (ctxown) {
             zmq_ctx_destroy(ctxown);
         }
+    }
+
+    bool Poll(long timeout) {
+        zmq_pollitem_t item;
+        item.socket = socket;
+        item.events = ZMQ_POLLIN;
+
+        int rc = zmq_poll(&item, 1, timeout);
+        if (rc < 0) {
+            throw Error();
+        }
+
+        return rc > 0;
     }
 
     void Receive(rapidjson::Document& doc) {
@@ -115,12 +129,25 @@ void PLCServer::_RunThread() {
     while (!shutdown) {
         if (!socket) {
             socket.reset(new zmq::ServerSocket(ctx, endpoint));
+            std::cout << "New socket created: " << endpoint << std::endl;
         }
 
         try {
+            if (socket->Poll(50000)) {
+                std::cout << "Received something on the socket." << std::endl;
 
+                // something on the socket
+                rapidjson::Document doc;
+                socket->Receive(doc);
+
+                // TODO: process command
+                socket->Send(doc);
+            }
         } catch (const zmq::Error& e) {
             socket.release();
+            std::cout << "Error caught: " << e.what() << std::endl;
         }
     }
+
+    std::cout << "Thread stopping." << std::endl;
 }

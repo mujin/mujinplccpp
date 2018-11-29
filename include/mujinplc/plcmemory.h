@@ -5,17 +5,18 @@
 #include <vector>
 #include <mutex>
 #include <rapidjson/document.h>
+#include <mujinplc/config.h>
 
 namespace mujinplc
 {
 
-enum PLCValueType {
+enum MUJINPLC_API PLCValueType {
     PLCValueType_String,
     PLCValueType_Boolean,
     PLCValueType_Integer,
 };
 
-class PLCValue {
+class MUJINPLC_API PLCValue {
 public:
     PLCValue(std::string value);
     PLCValue(int value);
@@ -35,7 +36,7 @@ private:
     bool booleanValue;
 };
 
-class PLCMemory {
+class MUJINPLC_API PLCMemory {
 public:
     PLCMemory();
     virtual ~PLCMemory();

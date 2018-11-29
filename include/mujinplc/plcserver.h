@@ -2,11 +2,12 @@
 #define MUJINPLC_PLCSERVER_H
 
 #include <thread>
+#include <mujinplc/config.h>
 #include <mujinplc/plcmemory.h>
 
 namespace mujinplc {
 
-class PLCServer {
+class MUJINPLC_API PLCServer {
 public:
     PLCServer(const std::shared_ptr<PLCMemory>& memory, void* ctx, const std::string& endpoint);
     virtual ~PLCServer();
