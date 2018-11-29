@@ -11,6 +11,7 @@ namespace mujinplc
 {
 
 enum MUJINPLC_API PLCValueType {
+    PLCValueType_Null,
     PLCValueType_String,
     PLCValueType_Boolean,
     PLCValueType_Integer,
@@ -27,6 +28,9 @@ public:
 
     // reads out the value as rapidjson::Value
     void Read(rapidjson::Value &output, rapidjson::Document::AllocatorType &allocator);
+
+    // writes the value from rapidjson::Value
+    bool Write(const rapidjson::Value &value);
 
 private:
     PLCValueType type;
