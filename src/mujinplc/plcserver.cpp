@@ -1,5 +1,6 @@
 #include "mujinplc/plcserver.h"
 
+#include <vector>
 #include <iostream> // TODO: temporary
 #include <zmq.h>
 #include <rapidjson/stringbuffer.h>
@@ -54,8 +55,13 @@ public:
         }
     }
     virtual ~ServerSocket() {
+        if (socket) {
+            zmq_close(socket);
+            socket = NULL;
+        }
         if (ctxown) {
             zmq_ctx_destroy(ctxown);
+            ctxown = NULL;
         }
     }
 
@@ -133,15 +139,39 @@ void PLCServer::_RunThread() {
         }
 
         try {
-            if (socket->Poll(50000)) {
-                std::cout << "Received something on the socket." << std::endl;
-
+            if (socket->Poll(50)) {
                 // something on the socket
-                rapidjson::Document doc;
-                socket->Receive(doc);
+                rapidjson::Document request, response;
+                rapidjson::Value key, keyvalues;
+                response.SetObject();
+
+                socket->Receive(request);
+
+                if (request.IsObject() && request.HasMember("command") && request["command"].IsString()) {
+                    std::string command = request["command"].GetString();
+                    if (command == "read") {
+                        if (request.HasMember("keys") && request["keys"].IsArray()) {
+                            std::vector<std::string> keys;
+                            for (auto it = request["keys"].Begin(); it != request["keys"].End(); ++it) {
+                                if (it->IsString()) {
+                                    keys.push_back(it->GetString());
+                                }
+                            }
+                            memory->Read(keys, keyvalues, response.GetAllocator());
+                            key.SetString("keyvalues", response.GetAllocator());
+                            response.AddMember(key, keyvalues, response.GetAllocator());
+                        }
+                    }
+                    else if (command == "write") {
+                        if (request.HasMember("keyvalues") && request["keyvalues"].IsObject()) {
+                            memory->Write(request["keyvalues"]);
+                        }
+                    }
+                    std::cout << "Received command " << command << " on the socket." << std::endl;
+                }
 
                 // TODO: process command
-                socket->Send(doc);
+                socket->Send(response);
             }
         } catch (const zmq::Error& e) {
             socket.release();
