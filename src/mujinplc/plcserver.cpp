@@ -19,23 +19,9 @@ private:
     int errnum;
 };
 
-class Message {
-public:
-    Message() {
-        if (zmq_msg_init(&message)) {
-            throw Error();
-        }
-    }
-    virtual ~Message() {
-        zmq_msg_close(&message);
-    }
-
-    zmq_msg_t message;
-};
-
 class ServerSocket {
 public:
-    ServerSocket(void* ctxin, const std::string& endpoint) : ctx(ctxin), socket(NULL) {
+    ServerSocket(void* ctxin, const std::string& endpoint) : ctx(ctxin), ctxown(NULL), socket(NULL) {
         if (!ctx) {
             ctxown = zmq_ctx_new();
             if (ctxown == NULL) {
@@ -49,11 +35,22 @@ public:
             throw Error();
         }
 
+        int linger = 100;
+        if (zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger))) {
+            throw Error();
+        }
+
+        int sndhwm = 2;
+        if (zmq_setsockopt(socket, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm))) {
+            throw Error();
+        }
+
         if (zmq_bind(socket, endpoint.c_str())) {
             throw Error();
         }
     }
     virtual ~ServerSocket() {
+        zmq_msg_close(&message);
         if (socket) {
             zmq_close(socket);
             socket = NULL;
@@ -62,6 +59,7 @@ public:
             zmq_ctx_destroy(ctxown);
             ctxown = NULL;
         }
+        ctx = NULL;
     }
 
     bool Poll(long timeout) {
@@ -78,14 +76,17 @@ public:
     }
 
     void Receive(rapidjson::Document& doc) {
-        Message message;
+        zmq_msg_close(&message);
+        if (zmq_msg_init(&message)) {
+            throw Error();
+        }
 
-        int nbytes = zmq_msg_recv(&message.message, socket, ZMQ_NOBLOCK);
+        int nbytes = zmq_msg_recv(&message, socket, ZMQ_NOBLOCK);
         if (nbytes < 0) {
             throw Error();
         }
 
-        std::string data((char*)zmq_msg_data(&message.message), zmq_msg_size(&message.message));
+        std::string data((char*)zmq_msg_data(&message), zmq_msg_size(&message));
         doc.Parse<rapidjson::kParseFullPrecisionFlag>(data.c_str());
     }
 
@@ -104,6 +105,7 @@ private:
     void* ctx;
     void* ctxown;
     void* socket;
+    zmq_msg_t message;
 };
 }
 
@@ -205,10 +207,8 @@ void mujinplc::PLCServer::_RunThread() {
                             memory->Write(keyvalues);
                         }
                     }
-                    std::cout << "Received command " << command << " on the socket." << std::endl;
                 }
 
-                // TODO: process command
                 socket->Send(response);
             }
         } catch (const zmq::Error& e) {
@@ -216,6 +216,4 @@ void mujinplc::PLCServer::_RunThread() {
             std::cout << "Error caught: " << e.what() << std::endl;
         }
     }
-
-    std::cout << "Thread stopping." << std::endl;
 }
