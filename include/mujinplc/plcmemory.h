@@ -43,11 +43,11 @@ public:
     void SetNull();
 
 private:
-    PLCValueType type;
+    PLCValueType _type;
 
-    std::string stringValue;
-    int integerValue;
-    bool booleanValue;
+    std::string _stringValue;
+    int _integerValue;
+    bool _booleanValue;
 };
 
 MUJINPLC_API bool operator==(const PLCValue& lhs, const PLCValue& rhs);
@@ -70,9 +70,9 @@ public:
     void AddObserver(const std::shared_ptr<PLCMemoryObserver>& observer);
 
 private:
-    std::map<std::string, PLCValue> entries;
-    std::mutex mutex;
-    std::vector<std::weak_ptr<PLCMemoryObserver>> observers;
+    std::map<std::string, PLCValue> _entries;
+    std::mutex _mutex;
+    std::vector<std::weak_ptr<PLCMemoryObserver>> _observers;
 };
 
 }

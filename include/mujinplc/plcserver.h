@@ -20,11 +20,11 @@ public:
 private:
     void _RunThread();
 
-    bool shutdown;
-    std::thread thread;
-    std::shared_ptr<PLCMemory> memory;
-    void *ctx;
-    std::string endpoint;
+    bool _shutdown;
+    std::thread _thread;
+    std::shared_ptr<PLCMemory> _memory;
+    void *_ctx;
+    std::string _endpoint;
 };
 
 }

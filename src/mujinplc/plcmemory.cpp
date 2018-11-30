@@ -1,68 +1,68 @@
 #include "mujinplc/plcmemory.h"
 
-mujinplc::PLCValue::PLCValue() : type(mujinplc::PLCValueType_Null) {
+mujinplc::PLCValue::PLCValue() : _type(mujinplc::PLCValueType_Null) {
 }
 
-mujinplc::PLCValue::PLCValue(std::string value) : type(mujinplc::PLCValueType_String), stringValue(value) {
+mujinplc::PLCValue::PLCValue(std::string value) : _type(mujinplc::PLCValueType_String), _stringValue(value) {
 }
 
-mujinplc::PLCValue::PLCValue(int value) : type(mujinplc::PLCValueType_Integer), integerValue(value) {
+mujinplc::PLCValue::PLCValue(int value) : _type(mujinplc::PLCValueType_Integer), _integerValue(value) {
 }
 
-mujinplc::PLCValue::PLCValue(bool value) : type(mujinplc::PLCValueType_Boolean), booleanValue(value) {
+mujinplc::PLCValue::PLCValue(bool value) : _type(mujinplc::PLCValueType_Boolean), _booleanValue(value) {
 }
 
-mujinplc::PLCValue::PLCValue(const mujinplc::PLCValue& other) : type(other.type), stringValue(other.stringValue), integerValue(other.integerValue), booleanValue(other.booleanValue) {
+mujinplc::PLCValue::PLCValue(const mujinplc::PLCValue& other) : _type(other._type), _stringValue(other._stringValue), _integerValue(other._integerValue), _booleanValue(other._booleanValue) {
 }
 
 mujinplc::PLCValue::~PLCValue() {
 }
 
 bool mujinplc::PLCValue::IsString() const {
-    return type == mujinplc::PLCValueType_String;
+    return _type == mujinplc::PLCValueType_String;
 }
 
 const std::string& mujinplc::PLCValue::GetString() const {
-    return stringValue;
+    return _stringValue;
 }
 
 void mujinplc::PLCValue::SetString(const std::string& value) {
-    type = mujinplc::PLCValueType_String;
-    stringValue = value;
+    _type = mujinplc::PLCValueType_String;
+    _stringValue = value;
 }
 
 bool mujinplc::PLCValue::IsBoolean() const {
-    return type == mujinplc::PLCValueType_Boolean;
+    return _type == mujinplc::PLCValueType_Boolean;
 }
 
 bool mujinplc::PLCValue::GetBoolean() const {
-    return booleanValue;
+    return _booleanValue;
 }
 
 void mujinplc::PLCValue::SetBoolean(bool value) {
-    type = mujinplc::PLCValueType_Boolean;
-    booleanValue = value;
+    _type = mujinplc::PLCValueType_Boolean;
+    _booleanValue = value;
 }
 
 bool mujinplc::PLCValue::IsInteger() const {
-    return type == mujinplc::PLCValueType_Integer;
+    return _type == mujinplc::PLCValueType_Integer;
 }
 
 int mujinplc::PLCValue::GetInteger() const {
-    return integerValue;
+    return _integerValue;
 }
 
 void mujinplc::PLCValue::SetInteger(int value) {
-    type = mujinplc::PLCValueType_Integer;
-    integerValue = value;
+    _type = mujinplc::PLCValueType_Integer;
+    _integerValue = value;
 }
 
 bool mujinplc::PLCValue::IsNull() const {
-    return type == mujinplc::PLCValueType_Null;
+    return _type == mujinplc::PLCValueType_Null;
 }
 
 void mujinplc::PLCValue::SetNull() {
-    type = mujinplc::PLCValueType_Null;
+    _type = mujinplc::PLCValueType_Null;
 }
 
 bool mujinplc::operator==(const mujinplc::PLCValue& lhs, const mujinplc::PLCValue& rhs) {
@@ -95,10 +95,10 @@ void mujinplc::PLCMemory::Read(const std::vector<std::string> &keys, std::map<st
     keyvalues.clear();
 
     {
-        std::lock_guard<std::mutex> lock(mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         for (auto& key : keys) {
-            auto it = entries.find(key);
-            if (it != entries.end()) {
+            auto it = _entries.find(key);
+            if (it != _entries.end()) {
                 keyvalues.emplace(it->first, it->second);
             }
         }
@@ -111,23 +111,23 @@ void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> 
     std::vector<std::weak_ptr<PLCMemoryObserver>> observersCopy;
 
     {
-        std::lock_guard<std::mutex> lock(mutex);
+        std::lock_guard<std::mutex> lock(_mutex);
         for (auto& keyvalue : keyvalues) {
-            auto it = entries.find(keyvalue.first);
-            if (it != entries.end()) {
+            auto it = _entries.find(keyvalue.first);
+            if (it != _entries.end()) {
                 if (it->second != keyvalue.second) {
                     it->second = keyvalue.second;
                     modifications.emplace(keyvalue.first, keyvalue.second);
                 }
             } else {
-                entries.emplace(keyvalue.first, keyvalue.second);
+                _entries.emplace(keyvalue.first, keyvalue.second);
                 modifications.emplace(keyvalue.first, keyvalue.second);
             }
         }
 
         // copy under lock
         if (modifications.size() > 0) {
-            observersCopy =  observers;
+            observersCopy =  _observers;
         }
     }
 
@@ -141,9 +141,9 @@ void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> 
 void mujinplc::PLCMemory::AddObserver(const std::shared_ptr<PLCMemoryObserver>& observer) {
     std::map<std::string, mujinplc::PLCValue> entriesCopy;
     {
-        std::lock_guard<std::mutex> lock(mutex);
-        observers.push_back(observer);
-        entriesCopy = entries;
+        std::lock_guard<std::mutex> lock(_mutex);
+        _observers.push_back(observer);
+        entriesCopy = _entries;
     }
     if (entriesCopy.size() > 0) {
         observer->MemoryModified(entriesCopy);

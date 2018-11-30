@@ -16,7 +16,7 @@ public:
     virtual const char* what() const noexcept override;
 
 private:
-    int errnum;
+    int _errno;
 };
 
 class ZMQServerSocket {
@@ -29,69 +29,67 @@ public:
     void Send(const rapidjson::Value& value);
 
 private:
-    void* ctx;
-    void* ctxown;
-    void* socket;
-    zmq_msg_t message;
+    void* _ctx;
+    void* _socket;
+    zmq_msg_t _message;
 };
 
 }
 
-mujinplc::ZMQError::ZMQError() : errnum(zmq_errno()) {
+mujinplc::ZMQError::ZMQError() : _errno(zmq_errno()) {
 }
 
 mujinplc::ZMQError::~ZMQError() {
 }
 
 const char* mujinplc::ZMQError::what() const noexcept {
-    return zmq_strerror(errno);
+    return zmq_strerror(_errno);
 }
 
-mujinplc::ZMQServerSocket::ZMQServerSocket(void* ctxin, const std::string& endpoint) : ctx(ctxin), ctxown(NULL), socket(NULL) {
+mujinplc::ZMQServerSocket::ZMQServerSocket(void* ctx, const std::string& endpoint) : _ctx(NULL), _socket(NULL) {
     if (!ctx) {
-        ctxown = zmq_ctx_new();
-        if (ctxown == NULL) {
+        _ctx = zmq_ctx_new();
+        if (_ctx == NULL) {
             throw mujinplc::ZMQError();
         }
-        ctx = ctxown;
+        ctx = _ctx;
     }
 
-    socket = zmq_socket(ctx, ZMQ_REP);
-    if (socket == NULL) {
+    _socket = zmq_socket(ctx, ZMQ_REP);
+    if (_socket == NULL) {
         throw mujinplc::ZMQError();
     }
 
     int linger = 100;
-    if (zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger))) {
+    if (zmq_setsockopt(_socket, ZMQ_LINGER, &linger, sizeof(linger))) {
         throw mujinplc::ZMQError();
     }
 
     int sndhwm = 2;
-    if (zmq_setsockopt(socket, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm))) {
+    if (zmq_setsockopt(_socket, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm))) {
         throw mujinplc::ZMQError();
     }
 
-    if (zmq_bind(socket, endpoint.c_str())) {
+    if (zmq_bind(_socket, endpoint.c_str())) {
         throw mujinplc::ZMQError();
     }
 }
 
 mujinplc::ZMQServerSocket::~ZMQServerSocket() {
-    zmq_msg_close(&message);
-    if (socket) {
-        zmq_close(socket);
-        socket = NULL;
+    zmq_msg_close(&_message);
+    if (_socket) {
+        zmq_close(_socket);
+        _socket = NULL;
     }
-    if (ctxown) {
-        zmq_ctx_destroy(ctxown);
-        ctxown = NULL;
+    if (_ctx) {
+        zmq_ctx_destroy(_ctx);
+        _ctx = NULL;
     }
-    ctx = NULL;
 }
 
 bool mujinplc::ZMQServerSocket::Poll(long timeout) {
     zmq_pollitem_t item;
-    item.socket = socket;
+    item.socket = _socket;
     item.events = ZMQ_POLLIN;
 
     int rc = zmq_poll(&item, 1, timeout);
@@ -103,17 +101,17 @@ bool mujinplc::ZMQServerSocket::Poll(long timeout) {
 }
 
 void mujinplc::ZMQServerSocket::Receive(rapidjson::Document& doc) {
-    zmq_msg_close(&message);
-    if (zmq_msg_init(&message)) {
+    zmq_msg_close(&_message);
+    if (zmq_msg_init(&_message)) {
         throw mujinplc::ZMQError();
     }
 
-    int nbytes = zmq_msg_recv(&message, socket, ZMQ_NOBLOCK);
+    int nbytes = zmq_msg_recv(&_message, _socket, ZMQ_NOBLOCK);
     if (nbytes < 0) {
         throw mujinplc::ZMQError();
     }
 
-    std::string data((char*)zmq_msg_data(&message), zmq_msg_size(&message));
+    std::string data((char*)zmq_msg_data(&_message), zmq_msg_size(&_message));
     doc.Parse<rapidjson::kParseFullPrecisionFlag>(data.c_str());
 }
 
@@ -122,47 +120,47 @@ void mujinplc::ZMQServerSocket::Send(const rapidjson::Value& value) {
     rapidjson::Writer<rapidjson::StringBuffer> writer(stringbuffer);
     value.Accept(writer);
 
-    int nbytes = zmq_send(socket, stringbuffer.GetString(), stringbuffer.GetSize(), ZMQ_NOBLOCK);
+    int nbytes = zmq_send(_socket, stringbuffer.GetString(), stringbuffer.GetSize(), ZMQ_NOBLOCK);
     if (nbytes < 0) {
         throw mujinplc::ZMQError();
     }
 }
 
-mujinplc::PLCServer::PLCServer(const std::shared_ptr<mujinplc::PLCMemory>& memory, void* ctx, const std::string& endpoint) : shutdown(true), memory(memory), ctx(ctx), endpoint(endpoint) {
+mujinplc::PLCServer::PLCServer(const std::shared_ptr<mujinplc::PLCMemory>& memory, void* ctx, const std::string& endpoint) : _shutdown(true), _memory(memory), _ctx(ctx), _endpoint(endpoint) {
 }
 
 mujinplc::PLCServer::~PLCServer() {
-    shutdown = true;
+    _shutdown = true;
 }
 
 bool mujinplc::PLCServer::IsRunning() const {
-    return !shutdown || thread.joinable();
+    return !_shutdown || _thread.joinable();
 }
 
 void mujinplc::PLCServer::Start() {
     Stop();
 
-    shutdown = false;
-    thread = std::thread(&mujinplc::PLCServer::_RunThread, this);
+    _shutdown = false;
+    _thread = std::thread(&mujinplc::PLCServer::_RunThread, this);
 }
 
 void mujinplc::PLCServer::SetStop() {
-    shutdown = true;
+    _shutdown = true;
 }
 
 void mujinplc::PLCServer::Stop() {
     SetStop();
-    if (thread.joinable()) {
-        thread.join();
+    if (_thread.joinable()) {
+        _thread.join();
     }
 }
 
 void mujinplc::PLCServer::_RunThread() {
     std::unique_ptr<mujinplc::ZMQServerSocket> socket;
 
-    while (!shutdown) {
+    while (!_shutdown) {
         if (!socket) {
-            socket.reset(new mujinplc::ZMQServerSocket(ctx, endpoint));
+            socket.reset(new mujinplc::ZMQServerSocket(_ctx, _endpoint));
         }
 
         try {
@@ -190,7 +188,7 @@ void mujinplc::PLCServer::_RunThread() {
                         keys.push_back(key.GetString());
                     }
                 }
-                memory->Read(keys, keyvalues);
+                _memory->Read(keys, keyvalues);
 
                 rapidjson::Value key, value, values;
                 values.SetObject();
@@ -239,7 +237,7 @@ void mujinplc::PLCServer::_RunThread() {
                         keyvalues.emplace(keyvalue.name.GetString(), mujinplc::PLCValue());
                     }
                 }
-                memory->Write(keyvalues);
+                _memory->Write(keyvalues);
             }
 
             socket->Send(response);
