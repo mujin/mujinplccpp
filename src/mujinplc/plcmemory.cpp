@@ -107,10 +107,10 @@ void mujinplc::PLCMemory::Read(const std::vector<std::string> &keys, std::map<st
 
     {
         std::lock_guard<std::mutex> lock(mutex);
-        for (auto it = keys.begin(); it != keys.end(); it++) {
-            auto it2 = entries.find(*it);
-            if (it2 != entries.end()) {
-                keyvalues.emplace(it2->first, it2->second);
+        for (auto& key : keys) {
+            auto it = entries.find(key);
+            if (it != entries.end()) {
+                keyvalues.emplace(it->first, it->second);
             }
         }
     }
@@ -122,16 +122,16 @@ void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> 
 
     {
         std::lock_guard<std::mutex> lock(mutex);
-        for (auto it = keyvalues.begin(); it != keyvalues.end(); it++) {
-            auto it2 = entries.find(it->first);
-            if (it2 != entries.end()) {
-                if (it2->second != it->second) {
-                    it2->second = it->second;
-                    modifications.emplace(it->first, it->second);
+        for (auto& keyvalue : keyvalues) {
+            auto it = entries.find(keyvalue.first);
+            if (it != entries.end()) {
+                if (it->second != keyvalue.second) {
+                    it->second = keyvalue.second;
+                    modifications.emplace(keyvalue.first, keyvalue.second);
                 }
             } else {
-                entries.emplace(it->first, it->second);
-                modifications.emplace(it->first, it->second);
+                entries.emplace(keyvalue.first, keyvalue.second);
+                modifications.emplace(keyvalue.first, keyvalue.second);
             }
         }
     }

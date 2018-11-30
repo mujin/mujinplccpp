@@ -151,9 +151,9 @@ void mujinplc::PLCServer::_RunThread() {
                         if (request.HasMember("keys") && request["keys"].IsArray()) {
                             std::vector<std::string> keys;
                             std::map<std::string, mujinplc::PLCValue> keyvalues;
-                            for (auto it = request["keys"].Begin(); it != request["keys"].End(); ++it) {
-                                if (it->IsString()) {
-                                    keys.push_back(it->GetString());
+                            for (auto& key : request["keys"].GetArray()) {
+                                if (key.IsString()) {
+                                    keys.push_back(key.GetString());
                                 }
                             }
                             memory->Read(keys, keyvalues);
@@ -161,16 +161,16 @@ void mujinplc::PLCServer::_RunThread() {
                             {
                                 rapidjson::Value key, value, values;
                                 values.SetObject();
-                                for (auto it = keyvalues.begin(); it != keyvalues.end(); it++) {
-                                    key.SetString(it->first.c_str(), response.GetAllocator());
-                                    if (it->second.IsString()) {
-                                        value.SetString(it->second.GetString().c_str(), response.GetAllocator());
+                                for (auto& keyvalue : keyvalues) {
+                                    key.SetString(keyvalue.first.c_str(), response.GetAllocator());
+                                    if (keyvalue.second.IsString()) {
+                                        value.SetString(keyvalue.second.GetString().c_str(), response.GetAllocator());
                                     }
-                                    else if (it->second.IsInteger()) {
-                                        value.SetInt(it->second.GetInteger());
+                                    else if (keyvalue.second.IsInteger()) {
+                                        value.SetInt(keyvalue.second.GetInteger());
                                     }
-                                    else if (it->second.IsBoolean()) {
-                                        value.SetBool(it->second.GetBoolean());
+                                    else if (keyvalue.second.IsBoolean()) {
+                                        value.SetBool(keyvalue.second.GetBoolean());
                                     }
                                     else {
                                         value.SetNull();
@@ -185,21 +185,21 @@ void mujinplc::PLCServer::_RunThread() {
                     else if (command == "write") {
                         if (request.HasMember("keyvalues") && request["keyvalues"].IsObject()) {
                             std::map<std::string, mujinplc::PLCValue> keyvalues;
-                            for (auto it = request["keyvalues"].MemberBegin(); it != request["keyvalues"].MemberEnd(); it++) {
-                                if (!it->name.IsString()) {
+                            for (auto& keyvalue : request["keyvalues"].GetObject()) {
+                                if (!keyvalue.name.IsString()) {
                                     continue;
                                 }
-                                if (it->value.IsString()) {
-                                    keyvalues.emplace(it->name.GetString(), std::string(it->value.GetString()));
+                                if (keyvalue.value.IsString()) {
+                                    keyvalues.emplace(keyvalue.name.GetString(), std::string(keyvalue.value.GetString()));
                                 }
-                                else if (it->value.IsBool()) {
-                                    keyvalues.emplace(it->name.GetString(), bool(it->value.GetBool()));
+                                else if (keyvalue.value.IsBool()) {
+                                    keyvalues.emplace(keyvalue.name.GetString(), bool(keyvalue.value.GetBool()));
                                 }
-                                else if (it->value.IsInt()) {
-                                    keyvalues.emplace(it->name.GetString(), int(it->value.GetInt()));
+                                else if (keyvalue.value.IsInt()) {
+                                    keyvalues.emplace(keyvalue.name.GetString(), int(keyvalue.value.GetInt()));
                                 }
                                 else {
-                                    keyvalues.emplace(it->name.GetString(), mujinplc::PLCValue());
+                                    keyvalues.emplace(keyvalue.name.GetString(), mujinplc::PLCValue());
                                 }
                             }
                             memory->Write(keyvalues);
