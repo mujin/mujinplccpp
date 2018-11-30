@@ -152,10 +152,10 @@ bool mujinplc::PLCController::WaitForAny(const std::map<std::string, mujinplc::P
 bool mujinplc::PLCController::WaitUntil(const std::string& key, const mujinplc::PLCValue& value, const std::chrono::milliseconds& timeout) {
     std::map<std::string, mujinplc::PLCValue> expectations, exceptions;
     expectations.emplace(key, value);
-    return WaitUntilAllUnless(expectations, exceptions, timeout);
+    return WaitUntilAll(expectations, exceptions, timeout);
 }
 
-bool mujinplc::PLCController::WaitUntilAllUnless(const std::map<std::string, mujinplc::PLCValue>& expectations, const std::map<std::string, mujinplc::PLCValue>& exceptions, const std::chrono::milliseconds& timeout) {
+bool mujinplc::PLCController::WaitUntilAll(const std::map<std::string, mujinplc::PLCValue>& expectations, const std::map<std::string, mujinplc::PLCValue>& exceptions, const std::chrono::milliseconds& timeout) {
     std::map<std::string, mujinplc::PLCValue> keyvalues;
     std::chrono::milliseconds timeleft = timeout;
 

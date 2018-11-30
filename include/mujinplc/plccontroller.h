@@ -42,7 +42,7 @@ public:
     // wait until multiple keys are all at their expected value, or any one key is at its exceptional value.
     // if all keys are already satisfying the expectations, return immediately.
     // if any of the exceptional conditions is met, return immediately.
-    virtual bool WaitUntilAllUnless(const std::map<std::string, PLCValue>& keyvalues, const std::map<std::string, PLCValue>& exceptions, const std::chrono::milliseconds& timeout=std::chrono::milliseconds::zero());
+    virtual bool WaitUntilAll(const std::map<std::string, PLCValue>& keyvalues, const std::map<std::string, PLCValue>& exceptions, const std::chrono::milliseconds& timeout=std::chrono::milliseconds::zero());
 
 private:
     void _Enqueue(const std::map<std::string, PLCValue>& keyvalues);
