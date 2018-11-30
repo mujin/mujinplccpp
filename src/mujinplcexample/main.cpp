@@ -33,6 +33,9 @@ int main() {
     std::shared_ptr<MemoryLogger> logger(new MemoryLogger());
     memory->AddObserver(logger);
 
+    std::shared_ptr<mujinplc::PLCController> controller(new mujinplc::PLCController(memory));
+    memory->AddObserver(controller);
+
     std::shared_ptr<mujinplc::PLCServer> server(new mujinplc::PLCServer(memory, NULL, "tcp://*:5555"));
     server->Start();
 

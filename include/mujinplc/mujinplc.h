@@ -5,5 +5,6 @@
 
 #include <mujinplc/plcmemory.h>
 #include <mujinplc/plcserver.h>
+#include <mujinplc/plccontroller.h>
 
 #endif
