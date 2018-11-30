@@ -7,99 +7,27 @@
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
 
-namespace zmq {
+namespace mujinplc {
 
-class Error : public std::exception {
+class ZMQError : public std::exception {
 public:
-    Error() : errnum(zmq_errno()) {}
-    virtual ~Error() {}
-    virtual const char* what() const noexcept { return zmq_strerror(errno); }
+    ZMQError();
+    virtual ~ZMQError();
+
+    virtual const char* what() const noexcept override;
 
 private:
     int errnum;
 };
 
-class ServerSocket {
+class ZMQServerSocket {
 public:
-    ServerSocket(void* ctxin, const std::string& endpoint) : ctx(ctxin), ctxown(NULL), socket(NULL) {
-        if (!ctx) {
-            ctxown = zmq_ctx_new();
-            if (ctxown == NULL) {
-                throw Error();
-            }
-            ctx = ctxown;
-        }
+    ZMQServerSocket(void* ctxin, const std::string& endpoint);
+    virtual ~ZMQServerSocket();
 
-        socket = zmq_socket(ctx, ZMQ_REP);
-        if (socket == NULL) {
-            throw Error();
-        }
-
-        int linger = 100;
-        if (zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger))) {
-            throw Error();
-        }
-
-        int sndhwm = 2;
-        if (zmq_setsockopt(socket, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm))) {
-            throw Error();
-        }
-
-        if (zmq_bind(socket, endpoint.c_str())) {
-            throw Error();
-        }
-    }
-    virtual ~ServerSocket() {
-        zmq_msg_close(&message);
-        if (socket) {
-            zmq_close(socket);
-            socket = NULL;
-        }
-        if (ctxown) {
-            zmq_ctx_destroy(ctxown);
-            ctxown = NULL;
-        }
-        ctx = NULL;
-    }
-
-    bool Poll(long timeout) {
-        zmq_pollitem_t item;
-        item.socket = socket;
-        item.events = ZMQ_POLLIN;
-
-        int rc = zmq_poll(&item, 1, timeout);
-        if (rc < 0) {
-            throw Error();
-        }
-
-        return rc > 0;
-    }
-
-    void Receive(rapidjson::Document& doc) {
-        zmq_msg_close(&message);
-        if (zmq_msg_init(&message)) {
-            throw Error();
-        }
-
-        int nbytes = zmq_msg_recv(&message, socket, ZMQ_NOBLOCK);
-        if (nbytes < 0) {
-            throw Error();
-        }
-
-        std::string data((char*)zmq_msg_data(&message), zmq_msg_size(&message));
-        doc.Parse<rapidjson::kParseFullPrecisionFlag>(data.c_str());
-    }
-
-    void Send(const rapidjson::Value& value) {
-        rapidjson::StringBuffer stringbuffer;
-        rapidjson::Writer<rapidjson::StringBuffer> writer(stringbuffer);
-        value.Accept(writer);
-
-        int nbytes = zmq_send(socket, stringbuffer.GetString(), stringbuffer.GetSize(), ZMQ_NOBLOCK);
-        if (nbytes < 0) {
-            throw Error();
-        }
-    }
+    bool Poll(long timeout);
+    void Receive(rapidjson::Document& doc);
+    void Send(const rapidjson::Value& value);
 
 private:
     void* ctx;
@@ -108,6 +36,97 @@ private:
     zmq_msg_t message;
 };
 
+}
+
+mujinplc::ZMQError::ZMQError() : errnum(zmq_errno()) {
+}
+
+mujinplc::ZMQError::~ZMQError() {
+}
+
+const char* mujinplc::ZMQError::what() const noexcept {
+    return zmq_strerror(errno);
+}
+
+mujinplc::ZMQServerSocket::ZMQServerSocket(void* ctxin, const std::string& endpoint) : ctx(ctxin), ctxown(NULL), socket(NULL) {
+    if (!ctx) {
+        ctxown = zmq_ctx_new();
+        if (ctxown == NULL) {
+            throw mujinplc::ZMQError();
+        }
+        ctx = ctxown;
+    }
+
+    socket = zmq_socket(ctx, ZMQ_REP);
+    if (socket == NULL) {
+        throw mujinplc::ZMQError();
+    }
+
+    int linger = 100;
+    if (zmq_setsockopt(socket, ZMQ_LINGER, &linger, sizeof(linger))) {
+        throw mujinplc::ZMQError();
+    }
+
+    int sndhwm = 2;
+    if (zmq_setsockopt(socket, ZMQ_SNDHWM, &sndhwm, sizeof(sndhwm))) {
+        throw mujinplc::ZMQError();
+    }
+
+    if (zmq_bind(socket, endpoint.c_str())) {
+        throw mujinplc::ZMQError();
+    }
+}
+
+mujinplc::ZMQServerSocket::~ZMQServerSocket() {
+    zmq_msg_close(&message);
+    if (socket) {
+        zmq_close(socket);
+        socket = NULL;
+    }
+    if (ctxown) {
+        zmq_ctx_destroy(ctxown);
+        ctxown = NULL;
+    }
+    ctx = NULL;
+}
+
+bool mujinplc::ZMQServerSocket::Poll(long timeout) {
+    zmq_pollitem_t item;
+    item.socket = socket;
+    item.events = ZMQ_POLLIN;
+
+    int rc = zmq_poll(&item, 1, timeout);
+    if (rc < 0) {
+        throw mujinplc::ZMQError();
+    }
+
+    return rc > 0;
+}
+
+void mujinplc::ZMQServerSocket::Receive(rapidjson::Document& doc) {
+    zmq_msg_close(&message);
+    if (zmq_msg_init(&message)) {
+        throw mujinplc::ZMQError();
+    }
+
+    int nbytes = zmq_msg_recv(&message, socket, ZMQ_NOBLOCK);
+    if (nbytes < 0) {
+        throw mujinplc::ZMQError();
+    }
+
+    std::string data((char*)zmq_msg_data(&message), zmq_msg_size(&message));
+    doc.Parse<rapidjson::kParseFullPrecisionFlag>(data.c_str());
+}
+
+void mujinplc::ZMQServerSocket::Send(const rapidjson::Value& value) {
+    rapidjson::StringBuffer stringbuffer;
+    rapidjson::Writer<rapidjson::StringBuffer> writer(stringbuffer);
+    value.Accept(writer);
+
+    int nbytes = zmq_send(socket, stringbuffer.GetString(), stringbuffer.GetSize(), ZMQ_NOBLOCK);
+    if (nbytes < 0) {
+        throw mujinplc::ZMQError();
+    }
 }
 
 mujinplc::PLCServer::PLCServer(const std::shared_ptr<mujinplc::PLCMemory>& memory, void* ctx, const std::string& endpoint) : shutdown(true), memory(memory), ctx(ctx), endpoint(endpoint) {
@@ -140,11 +159,11 @@ void mujinplc::PLCServer::Stop() {
 }
 
 void mujinplc::PLCServer::_RunThread() {
-    std::unique_ptr<zmq::ServerSocket> socket;
+    std::unique_ptr<mujinplc::ZMQServerSocket> socket;
 
     while (!shutdown) {
         if (!socket) {
-            socket.reset(new zmq::ServerSocket(ctx, endpoint));
+            socket.reset(new mujinplc::ZMQServerSocket(ctx, endpoint));
             std::cout << "New socket created: " << endpoint << std::endl;
         }
 
@@ -226,7 +245,7 @@ void mujinplc::PLCServer::_RunThread() {
             }
 
             socket->Send(response);
-        } catch (const zmq::Error& e) {
+        } catch (const mujinplc::ZMQError& e) {
             socket.release();
             std::cout << "Error caught: " << e.what() << std::endl;
         }
