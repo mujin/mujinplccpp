@@ -52,9 +52,6 @@ bool mujinplc::PLCController::_Dequeue(std::map<std::string, mujinplc::PLCValue>
             std::unique_lock<std::mutex> lock(_mutex);
             if (_condition.wait_for(lock, std::chrono::milliseconds(50)) == std::cv_status::no_timeout) {
                 keyvalues = _queue.front();
-                for (auto& keyvalue : _queue.front()) {
-                    _state[keyvalue.first] = keyvalue.second;
-                }
                 _queue.pop_front();
                 // successfully took
                 return true;
@@ -71,15 +68,26 @@ bool mujinplc::PLCController::_Dequeue(std::map<std::string, mujinplc::PLCValue>
             return false;
         }
     }
+
+    for (auto& keyvalue : keyvalues) {
+        _state[keyvalue.first] = keyvalue.second;
+    }
 }
 
 void mujinplc::PLCController::_DequeueAll() {
-    std::unique_lock<std::mutex> lock(_mutex);
-    while (!_queue.empty()) {
-        for (auto& keyvalue : _queue.front()) {
-             _state[keyvalue.first] = keyvalue.second;
+    std::map<std::string, mujinplc::PLCValue> keyvalues;
+    {
+        std::unique_lock<std::mutex> lock(_mutex);
+        while (!_queue.empty()) {
+            for (auto& keyvalue : _queue.front()) {
+                 keyvalues[keyvalue.first] = keyvalue.second;
+            }
+            _queue.pop_front();
         }
-        _queue.pop_front();
+    }
+
+    for (auto& keyvalue : keyvalues) {
+        _state[keyvalue.first] = keyvalue.second;
     }
 }
 
@@ -133,6 +141,57 @@ bool mujinplc::PLCController::WaitForAny(const std::map<std::string, mujinplc::P
                     return true;
                 }
             }
+        }
+
+        if (timeleft.count() != 0) {
+            timeleft -= std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::steady_clock::now() - start);
+        }
+    }
+}
+
+bool mujinplc::PLCController::WaitUntil(const std::string& key, const mujinplc::PLCValue& value, const std::chrono::milliseconds& timeout) {
+    std::map<std::string, mujinplc::PLCValue> expectations, exceptions;
+    expectations.emplace(key, value);
+    return WaitUntilAllUnless(expectations, exceptions, timeout);
+}
+
+bool mujinplc::PLCController::WaitUntilAllUnless(const std::map<std::string, mujinplc::PLCValue>& expectations, const std::map<std::string, mujinplc::PLCValue>& exceptions, const std::chrono::milliseconds& timeout) {
+    std::map<std::string, mujinplc::PLCValue> keyvalues;
+    std::chrono::milliseconds timeleft = timeout;
+
+    // combine dictionaries
+    keyvalues.insert(expectations.begin(), expectations.end());
+    keyvalues.insert(exceptions.begin(), exceptions.end());
+
+    // always clear the queue first
+    _DequeueAll();
+
+    while (true) {
+        // check if any exceptions is already met
+        for (auto& keyvalue : exceptions) {
+            auto it = _state.find(keyvalue.first);
+            if (it != _state.end() && it->second == keyvalue.second) {
+                return true;
+            }
+        }
+
+        // check if all expectations are already met
+        bool met = true;
+        for (auto& keyvalue : expectations) {
+            auto it = _state.find(keyvalue.first);
+            if (it != _state.end() && it->second != keyvalue.second) {
+                met = false;
+                break;
+            }
+        }
+        if (met) {
+            return true;
+        }
+
+        // wait for it to change
+        auto start = std::chrono::steady_clock::now();
+        if (!WaitForAny(keyvalues, timeleft)) {
+            return false;
         }
 
         if (timeleft.count() != 0) {
