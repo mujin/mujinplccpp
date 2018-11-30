@@ -4,7 +4,6 @@
 #include <map>
 #include <vector>
 #include <mutex>
-#include <rapidjson/document.h>
 #include <mujinplc/config.h>
 
 namespace mujinplc
@@ -19,18 +18,27 @@ enum MUJINPLC_API PLCValueType {
 
 class MUJINPLC_API PLCValue {
 public:
+    PLCValue();
     PLCValue(std::string value);
     PLCValue(int value);
     PLCValue(bool value);
-    PLCValue(const rapidjson::Value &value);
     PLCValue(const PLCValue& other);
     virtual ~PLCValue();
 
-    // reads out the value as rapidjson::Value
-    void Read(rapidjson::Value &output, rapidjson::Document::AllocatorType &allocator);
+    bool IsString() const;
+    std::string GetString() const;
+    void SetString(const std::string& value);
 
-    // writes the value from rapidjson::Value
-    bool Write(const rapidjson::Value &value);
+    bool IsBoolean() const;
+    bool GetBoolean() const;
+    void SetBoolean(bool value);
+
+    bool IsInteger() const;
+    int GetInteger() const;
+    void SetInteger(int value);
+
+    bool IsNull() const;
+    void SetNull();
 
 private:
     PLCValueType type;
@@ -40,16 +48,16 @@ private:
     bool booleanValue;
 };
 
+MUJINPLC_API bool operator==(const PLCValue& lhs, const PLCValue& rhs);
+MUJINPLC_API bool operator!=(const PLCValue& lhs, const PLCValue& rhs);
+
 class MUJINPLC_API PLCMemory {
 public:
     PLCMemory();
     virtual ~PLCMemory();
 
-    // reads keys and output dictionary in rapidjson::Value
-    void Read(const std::vector<std::string> &keys, rapidjson::Value &output, rapidjson::Document::AllocatorType &allocator);
-
-    // writes memory from given dictionary in rapidjson::Value
-    void Write(const rapidjson::Value &input);
+    void Read(const std::vector<std::string> &keys, std::map<std::string, PLCValue> &keyvalues);
+    void Write(const std::map<std::string, PLCValue> &keyvalues);
 
 private:
     std::map<std::string, PLCValue> entries;

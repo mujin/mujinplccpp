@@ -1,124 +1,142 @@
 #include "mujinplc/plcmemory.h"
 
-// #include <iostream> // TODO: temporary
+#include <iostream> // TODO: temporary
 
-using namespace mujinplc;
-
-PLCValue::PLCValue(std::string value) : type(PLCValueType_String), stringValue(value) {
+mujinplc::PLCValue::PLCValue() : type(mujinplc::PLCValueType_Null) {
 }
 
-PLCValue::PLCValue(int value) : type(PLCValueType_Integer), integerValue(value) {
+mujinplc::PLCValue::PLCValue(std::string value) : type(mujinplc::PLCValueType_String), stringValue(value) {
 }
 
-PLCValue::PLCValue(bool value) : type(PLCValueType_Boolean), booleanValue(value) {
+mujinplc::PLCValue::PLCValue(int value) : type(mujinplc::PLCValueType_Integer), integerValue(value) {
 }
 
-PLCValue::PLCValue(const PLCValue& other) : type(other.type), stringValue(other.stringValue), integerValue(other.integerValue), booleanValue(other.booleanValue) {
+mujinplc::PLCValue::PLCValue(bool value) : type(mujinplc::PLCValueType_Boolean), booleanValue(value) {
 }
 
-PLCValue::PLCValue(const rapidjson::Value &value) : type(PLCValueType_Null) {
-    Write(value);
+mujinplc::PLCValue::PLCValue(const mujinplc::PLCValue& other) : type(other.type), stringValue(other.stringValue), integerValue(other.integerValue), booleanValue(other.booleanValue) {
 }
 
-PLCValue::~PLCValue() {
+mujinplc::PLCValue::~PLCValue() {
 }
 
-void PLCValue::Read(rapidjson::Value &output, rapidjson::Document::AllocatorType &allocator) {
-    switch (type) {
-    case PLCValueType_String:
-        output.SetString(stringValue.c_str(), allocator);
-        break;
-    case PLCValueType_Integer:
-        output.Set(integerValue, allocator);
-        break;
-    case PLCValueType_Boolean:
-        output.Set(booleanValue, allocator);
-        break;
-    default:
-        output.SetNull();
-        break;
+bool mujinplc::PLCValue::IsString() const {
+    return type == mujinplc::PLCValueType_String;
+}
+
+std::string mujinplc::PLCValue::GetString() const {
+    if (type == mujinplc::PLCValueType_String) {
+        return stringValue;
     }
+    return "";
 }
 
-bool PLCValue::Write(const rapidjson::Value &value) {
-    if (value.IsString()) {
-        if (type == PLCValueType_String && stringValue == value.GetString()) {
-            return false;
-        }
-        type = PLCValueType_String;
-        stringValue = value.GetString();
-        return true;
-    }
-
-    if (value.IsBool()) {
-        if (type == PLCValueType_Boolean && booleanValue == value.GetBool()) {
-            return false;
-        }
-        type = PLCValueType_Boolean;
-        booleanValue = value.GetBool();
-        return true;
-    }
-
-
-    if (value.IsInt()) {
-        if (type == PLCValueType_Integer && integerValue == value.GetInt()) {
-            return false;
-        }
-        type = PLCValueType_Integer;
-        integerValue = value.GetInt();
-        return true;
-    }
-    
-    if (type == PLCValueType_Null) {
-        return false;
-    }
-    type = PLCValueType_Null;
-    return true;
+void mujinplc::PLCValue::SetString(const std::string& value) {
+    type = mujinplc::PLCValueType_String;
+    stringValue = value;
 }
 
-PLCMemory::PLCMemory() {
+bool mujinplc::PLCValue::IsBoolean() const {
+    return type == mujinplc::PLCValueType_Boolean;
 }
 
-PLCMemory::~PLCMemory() {
-}
-
-void PLCMemory::Read(const std::vector<std::string> &keys, rapidjson::Value &output, rapidjson::Document::AllocatorType &allocator) {
-    rapidjson::Value key, value;
-
-    std::lock_guard<std::mutex> lock(mutex);
-
-    output.SetObject();
-    for (auto it = keys.begin(); it != keys.end(); it++) {
-        auto it2 = entries.find(*it);
-        if (it2 != entries.end()) {
-            key.SetString(it2->first.c_str(), allocator);
-            it2->second.Read(value, allocator);
-            output.AddMember(key, value, allocator);
-        }
+bool mujinplc::PLCValue::GetBoolean() const {
+    if (type == mujinplc::PLCValueType_Boolean) {
+        return booleanValue;
     }
+    return false;
 }
 
-void PLCMemory::Write(const rapidjson::Value &input) {
-    std::map<std::string, PLCValue> modifications;
+void mujinplc::PLCValue::SetBoolean(bool value) {
+    type = mujinplc::PLCValueType_Boolean;
+    booleanValue = value;
+}
+
+bool mujinplc::PLCValue::IsInteger() const {
+    return type == mujinplc::PLCValueType_Integer;
+}
+
+int mujinplc::PLCValue::GetInteger() const {
+    if (type == mujinplc::PLCValueType_Integer) {
+        return integerValue;
+    }
+    return 0;
+}
+
+void mujinplc::PLCValue::SetInteger(int value) {
+    type = mujinplc::PLCValueType_Integer;
+    integerValue = value;
+}
+
+bool mujinplc::PLCValue::IsNull() const {
+    return type == mujinplc::PLCValueType_Null;
+}
+
+void mujinplc::PLCValue::SetNull() {
+    type = mujinplc::PLCValueType_Null;
+}
+
+bool mujinplc::operator==(const mujinplc::PLCValue& lhs, const mujinplc::PLCValue& rhs) {
+    if (lhs.IsString()) {
+        return rhs.IsString() && lhs.GetString() == rhs.GetString();
+    }
+    if (lhs.IsBoolean()) {
+        return rhs.IsBoolean() && lhs.GetBoolean() == rhs.GetBoolean();
+    }
+    if (lhs.IsInteger()) {
+        return rhs.IsInteger() && lhs.GetInteger() == rhs.GetInteger();
+    }
+    if (lhs.IsNull()) {
+        return rhs.IsNull();
+    }
+    return false;
+}
+
+bool mujinplc::operator!=(const mujinplc::PLCValue& lhs, const mujinplc::PLCValue& rhs) {
+    return !(lhs == rhs);
+}
+
+mujinplc::PLCMemory::PLCMemory() {
+}
+
+mujinplc::PLCMemory::~PLCMemory() {
+}
+
+void mujinplc::PLCMemory::Read(const std::vector<std::string> &keys, std::map<std::string, mujinplc::PLCValue> &keyvalues) {
+    keyvalues.clear();
 
     {
         std::lock_guard<std::mutex> lock(mutex);
-
-        for (auto it = input.MemberBegin(); it != input.MemberEnd(); it++) {
-            std::string key = it->name.GetString();
-            auto it2 = entries.find(key);
+        for (auto it = keys.begin(); it != keys.end(); it++) {
+            auto it2 = entries.find(*it);
             if (it2 != entries.end()) {
-                if (it2->second.Write(it->value)) {
-                    modifications.emplace(key, it->value);
+                keyvalues.emplace(it2->first, it2->second);
+            }
+        }
+    }
+}
+
+
+void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> &keyvalues) {
+    std::map<std::string, mujinplc::PLCValue> modifications;
+
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        for (auto it = keyvalues.begin(); it != keyvalues.end(); it++) {
+            auto it2 = entries.find(it->first);
+            if (it2 != entries.end()) {
+                if (it2->second != it->second) {
+                    it2->second = it->second;
+                    modifications.emplace(it->first, it->second);
                 }
             } else {
-                entries.emplace(key, it->value);
-                modifications.emplace(key, it->value);
+                entries.emplace(it->first, it->second);
+                modifications.emplace(it->first, it->second);
             }
         }
     }
 
     if (modifications.size() > 0) {
-        // std::cout << "Memory changed: " << modifications.size() << std::endl;
+        std::cout << "Memory changed: " << modifications.size() << std::endl;
     }
 }

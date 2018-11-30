@@ -3,10 +3,9 @@
 #include <vector>
 #include <iostream> // TODO: temporary
 #include <zmq.h>
+#include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
 #include <rapidjson/writer.h>
-
-using namespace mujinplc;
 
 namespace zmq {
 
@@ -108,28 +107,28 @@ private:
 };
 }
 
-PLCServer::PLCServer(const std::shared_ptr<PLCMemory>& memory, void* ctx, const std::string& endpoint) : shutdown(false), memory(memory), ctx(ctx), endpoint(endpoint) {
+mujinplc::PLCServer::PLCServer(const std::shared_ptr<mujinplc::PLCMemory>& memory, void* ctx, const std::string& endpoint) : shutdown(false), memory(memory), ctx(ctx), endpoint(endpoint) {
 }
 
-PLCServer::~PLCServer() {
+mujinplc::PLCServer::~PLCServer() {
     shutdown = true;
 }
 
-void PLCServer::Start() {
+void mujinplc::PLCServer::Start() {
     Stop();
 
     shutdown = false;
-    thread = std::thread(&PLCServer::_RunThread, this);
+    thread = std::thread(&mujinplc::PLCServer::_RunThread, this);
 }
 
-void PLCServer::Stop() {
+void mujinplc::PLCServer::Stop() {
     shutdown = true;
     if (thread.joinable()) {
         thread.join();
     }
 }
 
-void PLCServer::_RunThread() {
+void mujinplc::PLCServer::_RunThread() {
     std::unique_ptr<zmq::ServerSocket> socket;
 
     while (!shutdown) {
@@ -142,7 +141,6 @@ void PLCServer::_RunThread() {
             if (socket->Poll(50)) {
                 // something on the socket
                 rapidjson::Document request, response;
-                rapidjson::Value key, keyvalues;
                 response.SetObject();
 
                 socket->Receive(request);
@@ -152,19 +150,59 @@ void PLCServer::_RunThread() {
                     if (command == "read") {
                         if (request.HasMember("keys") && request["keys"].IsArray()) {
                             std::vector<std::string> keys;
+                            std::map<std::string, mujinplc::PLCValue> keyvalues;
                             for (auto it = request["keys"].Begin(); it != request["keys"].End(); ++it) {
                                 if (it->IsString()) {
                                     keys.push_back(it->GetString());
                                 }
                             }
-                            memory->Read(keys, keyvalues, response.GetAllocator());
-                            key.SetString("keyvalues", response.GetAllocator());
-                            response.AddMember(key, keyvalues, response.GetAllocator());
+                            memory->Read(keys, keyvalues);
+
+                            {
+                                rapidjson::Value key, value, values;
+                                values.SetObject();
+                                for (auto it = keyvalues.begin(); it != keyvalues.end(); it++) {
+                                    key.SetString(it->first.c_str(), response.GetAllocator());
+                                    if (it->second.IsString()) {
+                                        value.SetString(it->second.GetString().c_str(), response.GetAllocator());
+                                    }
+                                    else if (it->second.IsInteger()) {
+                                        value.SetInt(it->second.GetInteger());
+                                    }
+                                    else if (it->second.IsBoolean()) {
+                                        value.SetBool(it->second.GetBoolean());
+                                    }
+                                    else {
+                                        value.SetNull();
+                                    }
+                                    values.AddMember(key, value, response.GetAllocator());
+                                }
+                                key.SetString("keyvalues", response.GetAllocator());
+                                response.AddMember(key, values, response.GetAllocator());
+                            }
                         }
                     }
                     else if (command == "write") {
                         if (request.HasMember("keyvalues") && request["keyvalues"].IsObject()) {
-                            memory->Write(request["keyvalues"]);
+                            std::map<std::string, mujinplc::PLCValue> keyvalues;
+                            for (auto it = request["keyvalues"].MemberBegin(); it != request["keyvalues"].MemberEnd(); it++) {
+                                if (!it->name.IsString()) {
+                                    continue;
+                                }
+                                if (it->value.IsString()) {
+                                    keyvalues.emplace(it->name.GetString(), std::string(it->value.GetString()));
+                                }
+                                else if (it->value.IsBool()) {
+                                    keyvalues.emplace(it->name.GetString(), bool(it->value.GetBool()));
+                                }
+                                else if (it->value.IsInt()) {
+                                    keyvalues.emplace(it->name.GetString(), int(it->value.GetInt()));
+                                }
+                                else {
+                                    keyvalues.emplace(it->name.GetString(), mujinplc::PLCValue());
+                                }
+                            }
+                            memory->Write(keyvalues);
                         }
                     }
                     std::cout << "Received command " << command << " on the socket." << std::endl;
