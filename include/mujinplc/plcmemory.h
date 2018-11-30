@@ -28,7 +28,7 @@ public:
     virtual ~PLCValue();
 
     bool IsString() const;
-    std::string GetString() const;
+    const std::string& GetString() const;
     void SetString(const std::string& value);
 
     bool IsBoolean() const;

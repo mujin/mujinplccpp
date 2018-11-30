@@ -22,11 +22,8 @@ bool mujinplc::PLCValue::IsString() const {
     return type == mujinplc::PLCValueType_String;
 }
 
-std::string mujinplc::PLCValue::GetString() const {
-    if (type == mujinplc::PLCValueType_String) {
-        return stringValue;
-    }
-    return "";
+const std::string& mujinplc::PLCValue::GetString() const {
+    return stringValue;
 }
 
 void mujinplc::PLCValue::SetString(const std::string& value) {
@@ -39,10 +36,7 @@ bool mujinplc::PLCValue::IsBoolean() const {
 }
 
 bool mujinplc::PLCValue::GetBoolean() const {
-    if (type == mujinplc::PLCValueType_Boolean) {
-        return booleanValue;
-    }
-    return false;
+    return booleanValue;
 }
 
 void mujinplc::PLCValue::SetBoolean(bool value) {
@@ -55,10 +49,7 @@ bool mujinplc::PLCValue::IsInteger() const {
 }
 
 int mujinplc::PLCValue::GetInteger() const {
-    if (type == mujinplc::PLCValueType_Integer) {
-        return integerValue;
-    }
-    return 0;
+    return integerValue;
 }
 
 void mujinplc::PLCValue::SetInteger(int value) {
@@ -154,5 +145,7 @@ void mujinplc::PLCMemory::AddObserver(const std::shared_ptr<PLCMemoryObserver>& 
         observers.push_back(observer);
         entriesCopy = entries;
     }
-    observer->MemoryModified(entriesCopy);
+    if (entriesCopy.size() > 0) {
+        observer->MemoryModified(entriesCopy);
+    }
 }
