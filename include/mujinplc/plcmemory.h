@@ -4,6 +4,8 @@
 #include <map>
 #include <vector>
 #include <mutex>
+#include <memory>
+
 #include <mujinplc/config.h>
 
 namespace mujinplc
@@ -51,6 +53,12 @@ private:
 MUJINPLC_API bool operator==(const PLCValue& lhs, const PLCValue& rhs);
 MUJINPLC_API bool operator!=(const PLCValue& lhs, const PLCValue& rhs);
 
+class MUJINPLC_API PLCMemoryObserver {
+public:
+    virtual ~PLCMemoryObserver() = default;
+    virtual void MemoryModified(const std::map<std::string, PLCValue>& keyvalues) = 0;
+};
+
 class MUJINPLC_API PLCMemory {
 public:
     PLCMemory();
@@ -59,9 +67,12 @@ public:
     void Read(const std::vector<std::string> &keys, std::map<std::string, PLCValue> &keyvalues);
     void Write(const std::map<std::string, PLCValue> &keyvalues);
 
+    void AddObserver(const std::shared_ptr<PLCMemoryObserver>& observer);
+
 private:
     std::map<std::string, PLCValue> entries;
     std::mutex mutex;
+    std::vector<std::weak_ptr<PLCMemoryObserver>> observers;
 };
 
 }

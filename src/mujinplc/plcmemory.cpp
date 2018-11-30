@@ -1,7 +1,5 @@
 #include "mujinplc/plcmemory.h"
 
-#include <iostream> // TODO: temporary
-
 mujinplc::PLCValue::PLCValue() : type(mujinplc::PLCValueType_Null) {
 }
 
@@ -119,6 +117,7 @@ void mujinplc::PLCMemory::Read(const std::vector<std::string> &keys, std::map<st
 
 void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> &keyvalues) {
     std::map<std::string, mujinplc::PLCValue> modifications;
+    std::vector<std::weak_ptr<PLCMemoryObserver>> observersCopy;
 
     {
         std::lock_guard<std::mutex> lock(mutex);
@@ -134,9 +133,26 @@ void mujinplc::PLCMemory::Write(const std::map<std::string, mujinplc::PLCValue> 
                 modifications.emplace(keyvalue.first, keyvalue.second);
             }
         }
+
+        // copy under lock
+        if (modifications.size() > 0) {
+            observersCopy =  observers;
+        }
     }
 
-    if (modifications.size() > 0) {
-        std::cout << "Memory changed: " << modifications.size() << std::endl;
+    for (auto& observerWeak : observersCopy) {
+        if (auto observer = observerWeak.lock()) {
+            observer->MemoryModified(modifications);
+        }
     }
+}
+
+void mujinplc::PLCMemory::AddObserver(const std::shared_ptr<PLCMemoryObserver>& observer) {
+    std::map<std::string, mujinplc::PLCValue> entriesCopy;
+    {
+        std::lock_guard<std::mutex> lock(mutex);
+        observers.push_back(observer);
+        entriesCopy = entries;
+    }
+    observer->MemoryModified(entriesCopy);
 }
