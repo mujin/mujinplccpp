@@ -199,3 +199,73 @@ bool mujinplc::PLCController::WaitUntilAll(const std::map<std::string, mujinplc:
         }
     }
 }
+
+void mujinplc::PLCController::Set(const std::string& key, const PLCValue& value) {
+    std::map<std::string, mujinplc::PLCValue> keyvalues;
+    keyvalues.emplace(key, value);
+    _memory->Write(keyvalues);
+}
+
+
+void mujinplc::PLCController::Set(const std::map<std::string, PLCValue>& keyvalues) {
+    _memory->Write(keyvalues);
+}
+
+
+const mujinplc::PLCValue& mujinplc::PLCController::Get(const std::string& key, const mujinplc::PLCValue& defaultValue) const {
+    auto it = _state.find(key);
+    if (it != _state.end()) {
+        return it->second;
+    }
+    return defaultValue;
+}
+
+const mujinplc::PLCValue& mujinplc::PLCController::SyncAndGet(const std::string& key, const mujinplc::PLCValue& defaultValue) {
+    Sync();
+    return Get(key, defaultValue);
+}
+
+const std::string& mujinplc::PLCController::GetString(const std::string& key, const std::string& defaultValue) const {
+    auto it = _state.find(key);
+    if (it != _state.end()) {
+        if (it->second.IsString()) {
+            return it->second.GetString();
+        }
+    }
+    return defaultValue;
+}
+
+const std::string& mujinplc::PLCController::SyncAndGetString(const std::string& key, const std::string& defaultValue) {
+    Sync();
+    return GetString(key, defaultValue);
+}
+
+int mujinplc::PLCController::GetInteger(const std::string& key, int defaultValue) const {
+    auto it = _state.find(key);
+    if (it != _state.end()) {
+        if (it->second.IsInteger()) {
+            return it->second.GetInteger();
+        }
+    }
+    return defaultValue;
+}
+
+int mujinplc::PLCController::SyncAndGetInteger(const std::string& key, int defaultValue) {
+    Sync();
+    return GetInteger(key, defaultValue);
+}
+
+bool mujinplc::PLCController::GetBoolean(const std::string& key, bool defaultValue) const {
+    auto it = _state.find(key);
+    if (it != _state.end()) {
+        if (it->second.IsBoolean()) {
+            return it->second.GetBoolean();
+        }
+    }
+    return defaultValue;
+}
+
+bool mujinplc::PLCController::SyncAndGetBoolean(const std::string& key, bool defaultValue) {
+    Sync();
+    return GetBoolean(key, defaultValue);
+}

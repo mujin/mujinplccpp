@@ -44,6 +44,21 @@ public:
     // if any of the exceptional conditions is met, return immediately.
     virtual bool WaitUntilAll(const std::map<std::string, PLCValue>& keyvalues, const std::map<std::string, PLCValue>& exceptions, const std::chrono::milliseconds& timeout=std::chrono::milliseconds::zero());
 
+    virtual void Set(const std::string& key, const PLCValue& value);
+    virtual void Set(const std::map<std::string, PLCValue>& keyvalues);
+
+    virtual const PLCValue& Get(const std::string& key, const PLCValue& defaultValue=PLCValue()) const;
+    virtual const PLCValue& SyncAndGet(const std::string& key, const PLCValue& defaultValue=PLCValue());
+
+    virtual const std::string& GetString(const std::string& key, const std::string& defaultValue="") const;
+    virtual const std::string& SyncAndGetString(const std::string& key, const std::string& defaultValue="");
+
+    virtual int GetInteger(const std::string& key, int defaultValue=0) const;
+    virtual int SyncAndGetInteger(const std::string& key, int defaultValue=0);
+
+    virtual bool GetBoolean(const std::string& key, bool defaultValue=false) const;
+    virtual bool SyncAndGetBoolean(const std::string& key, bool defaultValue=false);
+
 private:
     void _Enqueue(const std::map<std::string, PLCValue>& keyvalues);
     bool _Dequeue(std::map<std::string, PLCValue>& keyvalues, const std::chrono::milliseconds& timeout=std::chrono::milliseconds::zero(), bool timeoutOnDisconnect=true);
