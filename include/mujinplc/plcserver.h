@@ -12,7 +12,9 @@ public:
     PLCServer(const std::shared_ptr<PLCMemory>& memory, void* ctx, const std::string& endpoint);
     virtual ~PLCServer();
 
+    bool IsRunning() const;
     void Start();
+    void SetStop();
     void Stop();
 
 private:
