@@ -33,13 +33,15 @@ int main() {
     std::shared_ptr<MemoryLogger> logger(new MemoryLogger());
     memory->AddObserver(logger);
 
-    std::shared_ptr<mujinplc::PLCController> controller(new mujinplc::PLCController(memory));
-    memory->AddObserver(controller);
+    std::shared_ptr<mujinplc::PLCController> controller(new mujinplc::PLCController(memory, std::chrono::milliseconds(1000), "test"));
 
     std::shared_ptr<mujinplc::PLCServer> server(new mujinplc::PLCServer(memory, NULL, "tcp://*:5555"));
     server->Start();
 
-    std::cout << "Server started. Press ENTER to stop." << std::endl;
+    std::cout << "Server started. Waiting for connection ..." << std::endl;
+    controller->WaitUntilConnected();
+
+    std::cout << "Connected. Press ENTER to stop." << std::endl;
     std::cin.get();
 
     server->Stop();
