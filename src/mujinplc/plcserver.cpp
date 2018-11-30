@@ -1,7 +1,6 @@
 #include "mujinplc/plcserver.h"
 
 #include <vector>
-#include <iostream> // TODO: temporary
 #include <zmq.h>
 #include <rapidjson/document.h>
 #include <rapidjson/stringbuffer.h>
@@ -164,7 +163,6 @@ void mujinplc::PLCServer::_RunThread() {
     while (!shutdown) {
         if (!socket) {
             socket.reset(new mujinplc::ZMQServerSocket(ctx, endpoint));
-            std::cout << "New socket created: " << endpoint << std::endl;
         }
 
         try {
@@ -247,7 +245,7 @@ void mujinplc::PLCServer::_RunThread() {
             socket->Send(response);
         } catch (const mujinplc::ZMQError& e) {
             socket.release();
-            std::cout << "Error caught: " << e.what() << std::endl;
+            // std::cout << "Error caught: " << e.what() << std::endl;
         }
     }
 }
