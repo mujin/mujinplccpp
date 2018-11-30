@@ -4,6 +4,7 @@ add_library(mujinplc SHARED
     plcmemory.cpp
     plcserver.cpp
     plccontroller.cpp
+    plclogic.cpp
 )
 set_target_properties(mujinplc PROPERTIES COMPILE_FLAGS "${libzmq_CFLAGS_OTHER}" LINK_FLAGS "${libzmq_LDFLAGS_OTHER}")
 target_link_libraries(mujinplc PUBLIC ${libzmq_LIBRARIES})
