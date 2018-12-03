@@ -72,6 +72,7 @@ bool mujinplc::PLCController::_Dequeue(std::map<std::string, mujinplc::PLCValue>
     for (auto& keyvalue : keyvalues) {
         _state[keyvalue.first] = keyvalue.second;
     }
+    return true;
 }
 
 void mujinplc::PLCController::_DequeueAll() {
@@ -179,7 +180,7 @@ bool mujinplc::PLCController::WaitUntilAll(const std::map<std::string, mujinplc:
         bool met = true;
         for (auto& keyvalue : expectations) {
             auto it = _state.find(keyvalue.first);
-            if (it != _state.end() && it->second != keyvalue.second) {
+            if (it == _state.end() || it->second != keyvalue.second) {
                 met = false;
                 break;
             }
